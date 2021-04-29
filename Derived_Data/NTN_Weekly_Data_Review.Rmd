@@ -1,0 +1,298 @@
+---
+title: "Preliminary Analysis of Atmospheric Deposition Data"
+author: "Curtis C. Bohlen, Casco Bay Estuary Partnership."
+date: "04/06/2021"
+output:
+  github_document:
+    toc: true
+    fig_width: 5
+    fig_height: 4
+---
+<img
+    src="https://www.cascobayestuary.org/wp-content/uploads/2014/04/logo_sm.jpg"
+    style="position:absolute;top:10px;right:50px;" />
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center',
+                      fig.width = 5, fig.height = 4,
+                      collapse = TRUE, comment = "#>")
+```
+
+# Install Libraries
+```{r}
+library(readr)
+library(tidyverse)
+library(GGally)
+
+library(CBEPgraphics)
+load_cbep_fonts()
+theme_set(theme_cbep())
+```
+
+# Read Weekly Data
+```{r}
+sibfldnm <- 'Original_Data'
+parent <- dirname(getwd())
+sibling <- paste(parent,sibfldnm, sep = '/')
+fn <- 'NTN-ME96-w.csv'
+```
+
+```{r load_data}
+weekly_data <- read_csv(paste(sibling, fn, sep='/')) %>%
+  mutate_at(vars(starts_with('flag')), ~replace_na(.,'')) %>%
+  mutate_at (c('ph', 'Conduc','Ca','Mg','K', 'Na','NH4', 
+               'NO3', 'Cl', 'SO4', 'Br'), 
+             ~na_if(., -9)) %>%
+  mutate(ppt = ifelse(ppt==-7, NA, ppt)) %>%
+  mutate(yr = yrmonth %/% 100) %>%
+  mutate(month = yrmonth %% 100)
+```
+
+## Create the "Long" Version of the data
+```{r}
+long_data <- weekly_data %>%
+  select(-starts_with('flag')) %>%
+  gather(ph, Conduc, Ca,Mg,K,Na,NH4,NO3,Cl, SO4, Br, key = 'Variable', value = 'Value')
+```
+
+# Exploring the "flag"data 
+Flags indicate limit of detection.  Here we confirm how they are used and whether there are numbers paired up with them.
+```{r}
+sum(weekly_data$flagCa=='NA', na.rm=TRUE)
+sum(weekly_data$flagCa!='NA', na.rm=TRUE)
+levels(factor(weekly_data$flagCa))
+```
+
+```{r}
+plt <- ggplot(weekly_data, aes(x=flagNH4, y=NH4)) + geom_violin(scale = 'count')
+plt
+```
+The -9 values reflect true missing data, while the flagged values are left
+censored, at the given value.
+
+## Detection limits
+Are these singly censored or multiply censored?
+```{r}
+long_data.flags <- weekly_data %>%
+  select(starts_with('flag')) %>%
+  gather('flagCa','flagMg','flagK','flagNa','flagNH4','flagNO3','flagCl', 
+         'flagSO4', 'flagBr', key = 'Variable', value = 'Flag')
+
+tmp <- long_data %>%
+  filter(Variable %in% c('Ca','Mg','K','Na','NH4','NO3','Cl', 'SO4', 'Br')) %>%
+  mutate(Flag = long_data.flags$Flag) %>%
+  select(dateon,Variable, Value, Flag) %>%
+  filter(Flag=='<') %>%
+  select(-Flag) %>%
+  spread(Variable, Value)
+
+for (cc in c('Ca','Mg','K','Na','NH4','NO3','Cl', 'SO4', 'Br'))
+{print(cc)
+  print(levels(factor(tmp[[cc]])))}
+
+rm(long_data.flags)
+```
+So, we have multiple different values flagged as detection limits for most of
+the parameters, For ammonium, the detection limits vary by a couple of orders of
+magnitude. We can find no clear documentation of the '<' flag or its  meaning in
+the metadata.
+
+# Plot Data For Exploratory Data Analysis
+To plot these all on one scale, we convert all observations to Z-scores of the
+log of the raw data, since just about everything (except pH) looks more or less
+like a lognormal distribution.  We use `geom_smooth()` but with a limited 
+number of knots, to prevent this from getting wildly out of hand.
+
+Note that this preliminary graphic ignores censoring, and thus effectively
+replaces all censored values with their detection limits.  This is probably O.K
+for exploratory purposes, but we should not take this graphic too seriously.
+```{r}
+plt <- long_data %>%
+  group_by(Variable) %>%
+  mutate(Value = scale(log(Value))) %>%
+  ggplot(aes(dateon, Value, color = Variable)) +
+  #geom_point() + 
+  geom_smooth(method = "gam", formula = y~s(x, k = 5), se=FALSE)
+plt
+```
+Br, NO3, SO4 and Conductivity show likely declines.  pH shows a likely increase 
+(although affected by the log transform).
+
+# Pairs Plots and Correlations
+## Log Transformed Pairs Plot
+(All except pH, which we transform and then back-transform, to keep the code 
+simple.)
+```{r fig.width = 8, fig.height = 8}
+tmp<- weekly_data %>%
+  select (-starts_with('flag')) %>%
+  select(6:15, 19) %>%
+  mutate_all(log10) %>%
+  mutate(ph = exp(ph))
+
+ggp<-ggpairs(tmp, progress = FALSE)
+suppressWarnings(print(ggp))
+```
+The log data looks better behaved, so a lognormal distribution looks reasonable 
+for most indicators. It looks like censoring is not a big deal except for the 
+bromine values. Negative correlations with precipitation are evident for many 
+parameters, including the two nitrogen-containing ions.
+
+## Correlations
+These are (implicitly here) correlations based on log transformed data (other 
+than pH). From the scatter plots, linear relationships are probably O.K. for 
+most relationships, the exception again being pH.
+```{r}
+cor(tmp, use='pairwise', method = 'spearman')
+cor(tmp, use='pairwise', method = 'kendall')
+```
+These include some pretty high correlations for environmental data (but these 
+correlations do not properly handle non-detects).
+
+# How many Observations?
+```{r}
+weekly_data %>%
+  select (-starts_with('flag')) %>%
+  select(6:16) %>%
+  summarise_all(~sum(! is.na(.)))
+```
+
+# How Many at Detection Limits?
+```{r}
+weekly_data %>%
+  select (starts_with('flag')) %>%
+  summarise_all(~sum(.=='<', na.rm=TRUE))
+```
+The ammonium data has the highest number at detection limits!  However
+even that's at about one observation in 16, or about 6% censored.  That's a low
+level of censoring where almost any method of handling censoring will work O.K
+for most (descriptive) purposes.
+
+# Focus on Ammonium and Nitrate
+## Concentrations and Rainfall
+### Ammonium
+```{r}
+a <- round(cor(weekly_data$NH4, weekly_data$subppt, 
+               use = 'pairwise', method = 'kendall'),2)
+ggplot(weekly_data, aes(subppt, NH4)) +
+  geom_point(color = 'blue3', alpha = .5) +
+  geom_density_2d(color = 'red') +
+  annotate('text', x = 0.5, y = 0.025, label = paste0('Tau =', a)) +
+  geom_smooth(method = 'lm', se = FALSE) +
+  scale_x_log10() +
+  scale_y_log10() +
+  ylab('Ammonium (mg/l)') +
+  xlab('Precipitation (mm)') +
+  theme_cbep(base_size = 12)
+```
+
+### Nitrate
+```{r}
+a <- round(cor(weekly_data$NO3, weekly_data$subppt,
+               use = 'pairwise', method = 'kendall'),2)
+ggplot(weekly_data, aes(subppt, NO3)) +
+  geom_point(color = 'blue3', alpha = .5) +
+  geom_density_2d(color = 'red') +
+  annotate('text', x = 0.5, y = 0.3, label = paste0('Tau =', a)) +
+  geom_smooth(method = 'lm', se = FALSE) +
+  scale_x_log10() +
+  scale_y_log10() +
+  ylab('Nitrate (mg/l)') +
+  xlab('Precipitation (mm)') +
+  theme_cbep(base_size = 12)
+```
+
+What we see is that both ammonium and nitrate CONCENTRATIONS decline with more 
+rainfall.  Since a roughly factor of 100 increase in rainfall is associated
+with roughly a factor of 10 decrease in concentrations, total N delivery
+clearly goes up substantially with rainfall.
+
+We redraw, and change the x axis transformation to capture data with no 
+associated rainfall.
+
+## Deposition and Rainfall
+### Generate N Deposition Data
+```{r calc_weekly_dep_data}
+MW_NH4 <- 14.007 + (1.008 * 4)
+MW_NO3 <- 14.007 +(15.999 * 3)
+MW_N <- 14.007
+
+weekly_dep_data <- weekly_data %>%
+  select(yr, month, ppt, dateon, dateoff, subppt, 
+         NH4, flagNH4, NO3, flagNO3) %>%
+  
+  # Convert to total N, in kg/m^3
+  mutate(NH4_N = NH4*(MW_N / MW_NH4) * 10^-3,
+         NO3_N = NO3*(MW_N / MW_NO3)* 10^-3,
+         concN = NH4_N + NO3_N) %>%
+  
+  # Convert to kg/ha
+  mutate(NH4_N_tot = NH4_N * ppt * 10,
+         NO3_N_tot =   NO3_N * ppt * 10,
+          totalN  = NH4_N_tot + NO3_N_tot,
+         logtotalN = log(totalN),
+         log1ptotalN = log1p(totalN)) %>%
+  
+  # Calculate a "censored value flag" for total N
+  # The following indicates when EITHER constituent was censored.  What we know
+  # is the sum is LESS THAN the sum of the censored and uncensored values, so 
+  # this works
+  mutate(flagconcN = if_else(((flagNH4 == '<' ) | (flagNO3 == '<')), '<',''),
+         flagtotalN = flagconcN)
+```
+
+### Ammonium
+```{r}
+a <- round(cor(weekly_dep_data$NH4_N_tot, weekly_data$subppt,
+               use = 'pairwise', method = 'kendall'),2)
+
+ggplot(weekly_dep_data, aes(subppt, NH4_N_tot)) +
+  geom_point(aes(color = flagNH4), alpha = .5) +
+  scale_color_manual(values = cbep_colors(), name = '',
+                     labels = c('Observed', 'Not Detected')) +
+  geom_density_2d(color = 'red') +
+  annotate('text', x = 1, y = 0.25, label = paste0('Tau =', a)) +
+  geom_smooth(method = 'lm', se = FALSE, color = cbep_colors()[3]) +
+  scale_x_continuous(trans = 'log1p', breaks = c(0,1,5,10, 20, 50, 100, 200)) +
+  scale_y_log10() +
+  ylab('Ammonium Loading (kg/ha as N)') +
+  xlab('Precipitation (mm)')  +
+  theme_cbep(base_size = 12) +
+  theme(legend.position = c(0.8, 0.25))
+```
+
+### Nitrate
+```{r}
+a <- round(cor(weekly_dep_data$NO3_N_tot, weekly_data$subppt,
+               use = 'pairwise', method = 'kendall'),2)
+ggplot(weekly_dep_data, aes(subppt, NO3_N_tot)) +
+  geom_point(color = cbep_colors()[1], alpha = .5) +
+  geom_density_2d(color = 'red') +
+  annotate('text', x = 0.5, y = 0.1, label = paste0('Tau =', a)) +
+  geom_smooth(method = 'lm', se = FALSE, color = cbep_colors()[3]) +
+  scale_x_continuous(trans = 'log1p',  breaks = c(0,1,5,10, 20, 50, 100, 200)) +
+  scale_y_log10() +
+  ylab('Nitrate Loading (kg/ha as N)') +
+  xlab('Precipitation (mm)') +
+  theme_cbep(base_size = 12)
+```
+
+### Total Nitrogen
+```{r}
+a <- round(cor(weekly_dep_data$NO3_N_tot, weekly_data$subppt,
+               use = 'pairwise', method = 'kendall'),2)
+ggplot(weekly_dep_data, aes(subppt, NO3_N_tot)) +
+  geom_point(aes(color = flagtotalN), alpha = .5) +
+  scale_color_manual(values = cbep_colors(), name = '',
+                     labels = c('Observed', 'NH4 not detected')) +
+  #geom_density_2d(color = 'red') +
+  annotate('text', x = 1, y = 0.1, label = paste0('Tau =', a)) +
+  geom_smooth(method = 'lm', se = FALSE, color = cbep_colors()[3]) +
+  scale_x_continuous(trans = 'log1p',  breaks = c(0,1,5,10, 20, 50, 100, 200)) +
+  scale_y_log10() +
+  ylab('Nitrogen Loading (kg/ha)') +
+  xlab('Precipitation (mm)') +
+  theme_cbep(base_size = 12) +
+   theme(legend.position = c(0.8, 0.25)) +
+  ggtitle('Weekly N Deposition 1998-2019')
+```
+

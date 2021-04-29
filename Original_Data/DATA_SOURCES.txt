@@ -1,0 +1,22 @@
+## Wolf's Neck Atmospheric Nitrogen Deposition Data
+
+Data available on-line is aproximately 6 months out of date.
+
+NADP Maps & Data Main URL: http://nadp.slh.wisc.edu/data/
+NTN Database URL (including daily precipitation data): https://nadp.slh.wisc.edu/data/sites/siteDetails.aspx?net=NTN&id=ME96
+
+Weekly NTN data data downloaded April 6, 2021 by Curtis C. Bohlen
+"NTN-ME96-w.csv"
+
+Daily NTN precipitation data downloaded April 6, 2021 by Curtis C. Bohlen
+"NTN-ME96-d.csv"
+
+Annual NTN Data through 2019 downloaded April 6, 2021by Curtis C. Bohlen
+"NTN-ME96-cy.csv"  (Calendar Year)
+"NTN-ME96-wy.csv"  (Water Year)
+
+Annual NTN Data seasonal data
+"NTN-ME96-s.csv" 
+"NTN-ME96-sdep.csv" 
+
+Associated metadata downloaded by Curtis C. Bohlen., on several dates.
