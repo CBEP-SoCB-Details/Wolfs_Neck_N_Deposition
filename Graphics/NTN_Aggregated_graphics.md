@@ -9,9 +9,13 @@ Curtis C. Bohlen, Casco Bay Estuary Partnership.
     -   [Add Data Quality Flag](#add-data-quality-flag)
     -   [Trend Graphic](#trend-graphic)
         -   [Consistent Units](#consistent-units)
-    -   [All Years](#all-years)
-    -   [Years that Meet QA Standards](#years-that-meet-qa-standards)
-    -   [Remove 2012 Too](#remove-2012-too)
+    -   [Kendall’s Tau](#kendalls-tau)
+        -   [All Years](#all-years)
+        -   [Years that Meet QA
+            Standards](#years-that-meet-qa-standards)
+    -   [Median-Based Linear Model](#median-based-linear-model)
+        -   [All Years](#all-years-1)
+    -   [Years that Meet QA Standards](#years-that-meet-qa-standards-1)
 -   [Atmospheric Nitrogen Loading](#atmospheric-nitrogen-loading)
     -   [Mean Loading Rates 2015 -
         2019](#mean-loading-rates-2015---2019)
@@ -105,7 +109,7 @@ long_data <- annual_data %>%
 
 ## Add Data Quality Flag
 
-THe data validation metadata for these data includes the following
+The data validation metadata for these data includes the following
 statement:
 
 > Three Completeness Criteria form the basis for the decision to include
@@ -127,6 +131,11 @@ totals or not:
 annual_data <- annual_data %>%
   mutate(fully_valid = Criteria1 >= 75 & Criteria2 >= 90 & Criteria3 >= 75)
 ```
+
+It is worth pointing out that for all years, Criteria2 (precipitation
+coverage) is 100% or near 100%. Where these years fail to meet data
+quality criteria, it is because of lack of valid samples. All years have
+at least 70% of rainfall with valid samples.
 
 ## Trend Graphic
 
@@ -192,11 +201,13 @@ There are significant data quality questions to contend with here, as
     source – specifically the decommissioning of the manure management
     pit at Wolfe’s Neck Farm.
 
-Given the obvious outlier for TN in 2012, we prefer to use a statistic
+Given the outlier for NH\_4 and TN in 2012, we prefer to use a statistic
 that is resistant to outliers. Here that can be either a rank
 correlation or Kendall’s Tau. We calculate both.
 
-## All Years
+## Kendall’s Tau
+
+### All Years
 
 ``` r
 cor.test(annual_data$yr, annual_data$totalN, method = 'spearman')
@@ -222,11 +233,11 @@ cor.test(annual_data$yr, annual_data$totalN, method = 'kendall')
 ```
 
 So we appear to have a significant decline in TN (and thus presumably
-NO3). The data providers do not use data from ears that do not meet
-Criteria 1 through 3. We should check if results are robust if we
-restrict to years that meet their data QA criteria.
+NO3). The data providers do not use data from years that do not meet
+Criteria 1 through 3. We check if results are robust if we restrict to
+years that meet their data QA criteria.
 
-## Years that Meet QA Standards
+### Years that Meet QA Standards
 
 If we remove several years with data that does not meet completeness
 criteria, we find a
@@ -255,40 +266,9 @@ cor.test(tmp1$yr, tmp1$totalN, method = 'kendall')
 #> -0.2647059
 ```
 
-So the significant results do not hold up if we remove those years.
+## Median-Based Linear Model
 
-## Remove 2012 Too
-
-We may also want to remove the outlier year of 2012, assuming the
-anomalous NH4 values are due to work on the manure management system at
-Wolfe’s Neck Farm.
-
-``` r
-tmp1 <- annual_data %>% filter(fully_valid) %>% filter(yr != 2012)
-cor.test(tmp1$yr, tmp1$totalN, method = 'spearman')
-#> 
-#>  Spearman's rank correlation rho
-#> 
-#> data:  tmp1$yr and tmp1$totalN
-#> S = 994, p-value = 0.07377
-#> alternative hypothesis: true rho is not equal to 0
-#> sample estimates:
-#>        rho 
-#> -0.4617647
-cor.test(tmp1$yr, tmp1$totalN, method = 'kendall')
-#> 
-#>  Kendall's rank correlation tau
-#> 
-#> data:  tmp1$yr and tmp1$totalN
-#> T = 39, p-value = 0.06411
-#> alternative hypothesis: true tau is not equal to 0
-#> sample estimates:
-#>   tau 
-#> -0.35
-```
-
-And that returns us to marginally significant correlations by all three
-tests.
+### All Years
 
 ``` r
 tn_mblm <- mblm(totalN ~ yr, data = annual_data)
@@ -319,10 +299,41 @@ summary(tn_mblm)
 
 That projects a decline of 0.04 mg/l TN as N per year.
 
+## Years that Meet QA Standards
+
+``` r
+tmp <- annual_data %>% filter(fully_valid)
+tn_mblm_2 <- mblm(totalN ~ yr, data = tmp)
+summary(tn_mblm_2)
+#> 
+#> Call:
+#> mblm(formula = totalN ~ yr, dataframe = tmp)
+#> 
+#> Residuals:
+#>      Min       1Q   Median       3Q      Max 
+#> -0.98085 -0.55484 -0.16201  0.07469  2.60562 
+#> 
+#> Coefficients:
+#>             Estimate      MAD V value Pr(>|V|)   
+#> (Intercept) 86.34507 53.36556     130  0.00934 **
+#> yr          -0.04139  0.02653      26  0.01500 * 
+#> ---
+#> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#> 
+#> Residual standard error: 0.8197 on 15 degrees of freedom
+```
+
+That continues to identify a statistically significant decline in TN,
+even omitting the data that does not meet all data completeness
+criteria. The predicted slope is quite similar, and while the intercept
+looks different, the model predictiosn are nearly identical.
+
 ``` r
 newdat <- tibble(yr = 1998:2019)
 preds = predict(tn_mblm, newdata = newdat)
+preds2 = predict(tn_mblm_2, newdata = newdat)
 newdat$pred = preds
+newdat$pred2 = preds2
 ```
 
 ``` r
@@ -331,7 +342,8 @@ plt <- ggplot(annual_data, aes(yr, totalN)) +
              size = 2) +
   scale_color_manual(values = cbep_colors()[3:4],
                      name = '', labels = c('Incomplete Data', 'Complete Data')) +
-  geom_line(data = newdat, mapping = aes(x = yr, y = pred)) +
+  geom_line(data = newdat, mapping = aes(x = yr, y = pred), lwd = 1.5, color = 'gray15') +
+  geom_line(data = newdat, mapping = aes(x = yr, y = preds), color = 'yellow') +
   xlab('') +
   ylab('Nitrogen Deposition (kg/ha)') +
   theme_cbep(base_size = 12) +
@@ -342,11 +354,16 @@ plt
 
 <img src="NTN_Aggregated_graphics_files/figure-gfm/unnamed-chunk-13-1.png" style="display: block; margin: auto;" />
 
+We conclude that there is a meaningful decline in TN over time, and that
+it makes little difference whether we include or do not include the
+years that do not meet data completeness criteria. We chose to include
+them.
+
 # Atmospheric Nitrogen Loading
 
 ## Mean Loading Rates 2015 - 2019
 
-These are in the original units, kg/ha. NOT kg/ha of N.
+These are in the original units, kg/ha. NOT kg/ha of N except for TN.
 
 ``` r
 recent_loads <- annual_data %>%
@@ -365,10 +382,24 @@ tn_rate <- recent_loads$totalN
 
 ``` r
 dat <- tibble(yr = 2015:2019, val = tn_rate)
+
+plt <- ggplot(annual_data, aes(yr, totalN)) +
+  geom_point(color = cbep_colors()[4], size = 2) +
+  scale_color_manual(values = cbep_colors()[3:4],
+                     name = '', labels = c('Incomplete Data', 'Complete Data')) +
+  geom_line(data = newdat, mapping = aes(x = yr, y = pred)) +
+  
+  xlab('') +
+  ylab('Nitrogen Deposition (kg/ha)') +
+  
+  theme_cbep(base_size = 12) +
+  theme(legend.position = c(.25, .8)) +
+  xlim(1998, 2020)
+
 plt2 <- plt + 
   geom_line(data = dat, mapping = aes(yr, val), color = cbep_colors()[5]) +
-  annotate('text', x = 2014, y = 2.6, label = 'Avg Rate 2015-2019\n 2.52 kg/ha',
-           size = 3, color = cbep_colors()[5], hjust = 1)
+  annotate('text', x = 2012, y = 2.62, label = 'Avg Rate 2015-2019\n 2.52 kg/ha',
+           size = 3, color = cbep_colors()[5], hjust = .5)
 plt2
 ```
 
