@@ -486,14 +486,13 @@ weekly_data %>%
 ```
 
 <img src="NTN_Aggregated_Data_files/figure-gfm/plot_recent_weekly-1.png" style="display: block; margin: auto;" />
-We note no anomalously high nitrate values in 2012, but several high –
-but not outrageous – NH4 concentrations that year.
+We note one very high nitrate values in 2012, but several high – but not
+outrageous – NH4 concentrations that year.
 
-That year saw significant changes in management at Wolfe’s Neck Farm. It
-is possible that 2012 was the year that the Wolfe’s Neck Farm manure
-management system was decommissioned, which would have released
-significant ammonium locally. If that is the case, that year would not
-be reflective of regional deposition.
+That year saw significant changes in management at Wolfe’s Neck Farm.
+Wolfe’s Neck in an agriculture and environmental educational center
+adjacent to the atmospheric deposition monitoring location.
 
-We have placed a call to Wolfe Neck Farm to explore and hopefully
-confirm that possibility.
+We checked with the farm staff, and they were not operating the farm
+that year. The farm was leased, and so they have no information on
+management activities that year.
