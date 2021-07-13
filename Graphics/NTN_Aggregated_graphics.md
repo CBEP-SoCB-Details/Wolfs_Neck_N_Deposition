@@ -20,17 +20,10 @@ Curtis C. Bohlen, Casco Bay Estuary Partnership.
     -   [Mean Loading Rates 2015 -
         2019](#mean-loading-rates-2015---2019)
     -   [Modify Graphic](#modify-graphic)
--   [Annual Nutrient Load Estimates](#annual-nutrient-load-estimates)
+-   [Annual Nutrient Load Estimate](#annual-nutrient-load-estimate)
     -   [Areas](#areas)
     -   [Deposition to Surface of Bay](#deposition-to-surface-of-bay)
-        -   [In Kilograms per Year](#in-kilograms-per-year)
-        -   [In Pounds per Year](#in-pounds-per-year)
-        -   [In Pounds per Day](#in-pounds-per-day)
-    -   [Deposition to Surface of
-        Watershed](#deposition-to-surface-of-watershed)
-        -   [In kg per year](#in-kg-per-year)
-        -   [In Pounds per Year](#in-pounds-per-year-1)
-        -   [In Pounds per Day](#in-pounds-per-day-1)
+-   [Load Graphic](#load-graphic)
 
 <img
     src="https://www.cascobayestuary.org/wp-content/uploads/2014/04/logo_sm.jpg"
@@ -54,11 +47,10 @@ library(readr)
 library(tidyverse)
 #> Warning: package 'tidyverse' was built under R version 4.0.5
 #> -- Attaching packages --------------------------------------- tidyverse 1.3.1 --
-#> v ggplot2 3.3.3     v dplyr   1.0.5
-#> v tibble  3.1.1     v stringr 1.4.0
+#> v ggplot2 3.3.3     v dplyr   1.0.6
+#> v tibble  3.1.2     v stringr 1.4.0
 #> v tidyr   1.1.3     v forcats 0.5.1
 #> v purrr   0.3.4
-#> Warning: package 'tibble' was built under R version 4.0.5
 #> Warning: package 'tidyr' was built under R version 4.0.5
 #> Warning: package 'dplyr' was built under R version 4.0.5
 #> Warning: package 'forcats' was built under R version 4.0.5
@@ -118,11 +110,11 @@ statement:
 
 The specific criteria are as follows:
 
-| Name      | Value | Meaning                                                                                                                             |
-|-----------|-------|-------------------------------------------------------------------------------------------------------------------------------------|
-| Criteria1 | 75    | Percentage of the summary period for which there are valid samples.                                                                 |
-| Criteria2 | 90    | Percentage of the summary period for which precipitation amounts are available either from the rain gage or from the sample volume. |
-| Criteria3 | 75    | Percentage of the total measured precipitation associated with valid samples.                                                       |
+| Name      | Value | Meaning                                                                                                                              |
+|-----------|-------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Criteria1 | 75    | Percentage of the summary period for which there are valid samples.                                                                  |
+| Criteria2 | 90    | Percentage of the summary period for which precipitation amounts are available either from the rain gauge or from the sample volume. |
+| Criteria3 | 75    | Percentage of the total measured precipitation associated with valid samples.                                                        |
 
 We add a flag to mark if all data quality metrics were met for annual
 totals or not:
@@ -326,7 +318,7 @@ summary(tn_mblm_2)
 That continues to identify a statistically significant decline in TN,
 even omitting the data that does not meet all data completeness
 criteria. The predicted slope is quite similar, and while the intercept
-looks different, the model predictiosn are nearly identical.
+looks different, the model predictions are nearly identical.
 
 ``` r
 newdat <- tibble(yr = 1998:2019)
@@ -421,7 +413,7 @@ ggsave('figures/tn_trend_with.pdf', device = cairo_pdf, width = 5, height = 4)
 
 <img src="NTN_Aggregated_graphics_files/figure-gfm/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
 
-# Annual Nutrient Load Estimates
+# Annual Nutrient Load Estimate
 
 ## Areas
 
@@ -434,46 +426,69 @@ Based on CBEP GIS data.
 
 ## Deposition to Surface of Bay
 
-### In Kilograms per Year
+The other quantities we discuss in the section on Casco Bay nutrient
+loads are expressed in terms of metric tons of nitrogen per year. We use
+the same units here. To make a graphic that looks similar to the other
+load estimates, we need to show couple of colors, and scale a single bar
+chart.
 
 ``` r
-535 * 100 * tn_rate
-#> [1] 134948.4
+# WE need to convert to units of N for consistency
+MW_NH4 <- 14.007 + (1.008 * 4)
+MW_NO3 <- 14.007 +(15.999 * 3)
+MW_N <- 14.007
+
+
+recent_direct_loads <- annual_data %>%
+  filter(yr > 2014) %>%
+  mutate(NH4 = NH4*(MW_N / MW_NH4),
+         NO3 = NO3*(MW_N / MW_NO3)) %>%
+  pivot_longer(NH4:totalN, names_to = 'Parameter', values_to = 'Value') %>%
+  mutate(Value = Value * 100 * 535 / 1000) %>%
+  mutate(Parameter = factor(Parameter, levels = c('NH4', 'NO3', 'totalN'),
+                            labels = c('Ammonium', 'Nitrate', 'Total Nitrogen'))) %>%
+  group_by(Parameter) %>%
+  summarize(Mean = round(mean(Value), 2),
+            SD = round(sd(Value), 3),
+            `Sample Size` = sum(! is.na(Value)))
+  
+  knitr::kable(recent_direct_loads)
 ```
 
-### In Pounds per Year
+| Parameter      |   Mean |     SD | Sample Size |
+|:---------------|-------:|-------:|------------:|
+| Ammonium       |  66.68 | 12.899 |           5 |
+| Nitrate        |  68.22 |  4.038 |           5 |
+| Total Nitrogen | 134.95 | 14.327 |           5 |
+
+# Load Graphic
 
 ``` r
-535 * 100 * tn_rate * 2.20462
-#> [1] 297509.9
+total = sum(recent_direct_loads$Mean[[3]])
+
+recent_direct_loads %>%
+  filter(Parameter != 'Total Nitrogen') %>%
+  
+  ggplot(aes(1, Mean, fill = Parameter)) +
+  geom_col() +
+  
+  ylab('Total Nitrogen\n(Metric Tons per Year)')  +
+  xlab('') +
+  
+  scale_fill_manual(values = cbep_colors()[4:6], name = '') +
+  theme_cbep(base_size = 12) +
+  theme(axis.text.x= element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.key.size = unit(0.2, 'in'),
+        legend.text = element_text(size = 9)) +
+  ylim(0, 500) +
+  annotate('text', x = 1, y = 1.1 * total, 
+           label = paste(round(total), 'MT'), 
+           size = 3)
 ```
 
-### In Pounds per Day
+<img src="NTN_Aggregated_graphics_files/figure-gfm/unnamed-chunk-18-1.png" style="display: block; margin: auto;" />
 
 ``` r
-535 * 100 * tn_rate * 2.20462 / 365
-#> [1] 815.0957
-```
-
-## Deposition to Surface of Watershed
-
-### In kg per year
-
-``` r
-2554 * 100 * tn_rate
-#> [1] 644221
-```
-
-### In Pounds per Year
-
-``` r
-2554 * 100 * tn_rate * 2.20462
-#> [1] 1420262
-```
-
-### In Pounds per Day
-
-``` r
-2554 * 100 * tn_rate * 2.20462 / 365
-#> [1] 3891.13
+ggsave('figures/tn_atmospheric.pdf', device = cairo_pdf, width = 2.75, height = 4)
 ```

@@ -11,9 +11,13 @@ Weekly NTN data data downloaded April 6, 2021 by Curtis C. Bohlen
 Daily NTN precipitation data downloaded April 6, 2021 by Curtis C. Bohlen
 "NTN-ME96-d.csv"
 
-Annual NTN Data through 2019 downloaded April 6, 2021by Curtis C. Bohlen
+Annual NTN Data through 2019 downloaded April 6, 2021 by Curtis C. Bohlen
 "NTN-ME96-cy.csv"  (Calendar Year)
 "NTN-ME96-wy.csv"  (Water Year)
+
+Annual NTN DEPOSITION data, through 2019, downloaded April 6, 2021 by 
+Curtis C. Bohlen.  These data provide annunal estimates of nitrogen loading 
+
 
 Annual NTN Data seasonal data
 "NTN-ME96-s.csv" 
