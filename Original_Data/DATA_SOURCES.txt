@@ -3,7 +3,12 @@
 Data available on-line is aproximately 6 months out of date.
 
 NADP Maps & Data Main URL: http://nadp.slh.wisc.edu/data/
-NTN Database URL (including daily precipitation data): https://nadp.slh.wisc.edu/data/sites/siteDetails.aspx?net=NTN&id=ME96
+NTN Database URL (including daily precipitation data): 
+https://nadp.slh.wisc.edu/data/sites/siteDetails.aspx?net=NTN&id=ME96
+
+(The data has since been moved to: https://nadp.slh.wisc.edu/sites/ntn-ME96/)
+This site is now listed only as being located in Cumberland (County), Maine,
+but hte latitude and longitude are for the same location, in Freeport.
 
 Weekly NTN data data downloaded April 6, 2021 by Curtis C. Bohlen
 "NTN-ME96-w.csv"
