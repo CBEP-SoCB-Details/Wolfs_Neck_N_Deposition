@@ -469,7 +469,7 @@ annual_data %>%
 #> 1  2012        81       100        83
 ```
 
-SO note that 2012 meets all three of the data quality criteria. it is
+So note that 2012 meets all three of the data quality criteria. It is
 NOT a year we can ignore as invalid data.
 
 ``` r
