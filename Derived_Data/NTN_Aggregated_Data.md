@@ -47,11 +47,11 @@ library(readr)
 library(tidyverse)
 #> Warning: package 'tidyverse' was built under R version 4.0.5
 #> -- Attaching packages --------------------------------------- tidyverse 1.3.1 --
-#> v ggplot2 3.3.3     v dplyr   1.0.5
-#> v tibble  3.1.1     v stringr 1.4.0
-#> v tidyr   1.1.3     v forcats 0.5.1
+#> v ggplot2 3.3.5     v dplyr   1.0.7
+#> v tibble  3.1.6     v stringr 1.4.0
+#> v tidyr   1.1.4     v forcats 0.5.1
 #> v purrr   0.3.4
-#> Warning: package 'tibble' was built under R version 4.0.5
+#> Warning: package 'ggplot2' was built under R version 4.0.5
 #> Warning: package 'tidyr' was built under R version 4.0.5
 #> Warning: package 'dplyr' was built under R version 4.0.5
 #> Warning: package 'forcats' was built under R version 4.0.5
@@ -96,27 +96,16 @@ weekly_data <- read_csv(file.path(sibling, fn)) %>%
   mutate(yr = yrmonth %/% 100) %>%
   mutate(month = yrmonth %% 100,
          monthf = factor(month, levels = 1:12, labels = month.abb))
-#> 
+#> Rows: 1177 Columns: 31
 #> -- Column specification --------------------------------------------------------
-#> cols(
-#>   .default = col_double(),
-#>   siteID = col_character(),
-#>   labno = col_character(),
-#>   dateon = col_datetime(format = ""),
-#>   dateoff = col_datetime(format = ""),
-#>   flagCa = col_character(),
-#>   flagMg = col_character(),
-#>   flagK = col_character(),
-#>   flagNa = col_logical(),
-#>   flagNH4 = col_character(),
-#>   flagNO3 = col_character(),
-#>   flagCl = col_logical(),
-#>   flagSO4 = col_character(),
-#>   valcode = col_character(),
-#>   invalcode = col_character(),
-#>   modifiedOn = col_character()
-#> )
-#> i Use `spec()` for the full column specifications.
+#> Delimiter: ","
+#> chr  (11): siteID, labno, flagCa, flagMg, flagK, flagNH4, flagNO3, flagSO4, ...
+#> dbl  (16): yrmonth, ph, Conduc, Ca, Mg, K, Na, NH4, NO3, Cl, SO4, flagBr, Br...
+#> lgl   (2): flagNa, flagCl
+#> dttm  (2): dateon, dateoff
+#> 
+#> i Use `spec()` to retrieve the full column specification for this data.
+#> i Specify the column types or set `show_col_types = FALSE` to quiet this message.
 ```
 
 # Read Monthly Data
@@ -131,15 +120,15 @@ monthly_data <- read_csv(file.path(sibling, fn)) %>%
   mutate(plotdate = as.POSIXct(paste(yr,month, '15', sep = '-'), 
                                format='%Y-%m-%d')) %>%
   select(-c('Ca','Mg','K', 'Na', 'Cl','Br'))
-#> 
+#> Rows: 271 Columns: 23
 #> -- Column specification --------------------------------------------------------
-#> cols(
-#>   .default = col_double(),
-#>   siteID = col_character(),
-#>   startDate = col_datetime(format = ""),
-#>   lastDate = col_datetime(format = "")
-#> )
-#> i Use `spec()` for the full column specifications.
+#> Delimiter: ","
+#> chr   (1): siteID
+#> dbl  (20): month, yr, Criteria1, Criteria2, Criteria3, Ca, Mg, K, Na, NH4, N...
+#> dttm  (2): startDate, lastDate
+#> 
+#> i Use `spec()` to retrieve the full column specification for this data.
+#> i Specify the column types or set `show_col_types = FALSE` to quiet this message.
 ```
 
 # Read Annual Data
@@ -149,16 +138,15 @@ fn <- 'NTN-ME96-cydep.csv'
 annual_data <- read_csv(file.path(sibling, fn)) %>%
   mutate_at (c('Ca','Mg','K', 'Na','totalN', 'Cl', 'SO4', 'Br'), ~na_if(., -9)) %>%
   select(-c('Ca','Mg','K', 'Na', 'Cl','SO4', 'Br'))
-#> 
+#> Rows: 22 Columns: 23
 #> -- Column specification --------------------------------------------------------
-#> cols(
-#>   .default = col_double(),
-#>   siteID = col_character(),
-#>   seas = col_character(),
-#>   startDate = col_datetime(format = ""),
-#>   lastDate = col_datetime(format = "")
-#> )
-#> i Use `spec()` for the full column specifications.
+#> Delimiter: ","
+#> chr   (2): siteID, seas
+#> dbl  (19): yr, Criteria1, Criteria2, Criteria3, Ca, Mg, K, Na, NH4, NO3, tot...
+#> dttm  (2): startDate, lastDate
+#> 
+#> i Use `spec()` to retrieve the full column specification for this data.
+#> i Specify the column types or set `show_col_types = FALSE` to quiet this message.
 ```
 
 # Total Weekly N Deposition
@@ -469,8 +457,8 @@ annual_data %>%
 #> 1  2012        81       100        83
 ```
 
-SO note that 2012 meets all three of the data quality criteria. it is
-NOT a year we can ignore as invalid data.
+So note that 2012 meets all three of the data quality criteria. It is
+*not* a year we can ignore as invalid data.
 
 ``` r
 weekly_data %>%

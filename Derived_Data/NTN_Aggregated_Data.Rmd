@@ -354,7 +354,7 @@ annual_data %>%
   select(yr, contains('Criteria'))
 ```
 
-So note that 2012 meets all three of the data quality criteria.  it is NOT a
+So note that 2012 meets all three of the data quality criteria.  It is *not* a
 year we can ignore as invalid data.
 ```{r plot_recent_weekly}
 weekly_data %>%
